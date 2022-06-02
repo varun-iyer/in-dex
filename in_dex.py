@@ -22,30 +22,32 @@ def tokdoc(raw_text):
 
 katz = tokdoc(open("katz.txt").read())
 
-def sent2vec(sentences):
-    from sent2vec.vectorizer import Vectorizer
-    vectorizer = Vectorizer()
-    vectorizer.run(sentences)
-    vectors = vectorizer.vectors
-    return vectors
-
-def cosine_graph(sentences, skip_adjacent=0):
+def nwise(iterable, n=2):
     """
-    :param skip_adjacent: skips a pairing if their difference is less than
+    An implementation of itertools.pairwise for triples and other sets
+
+    for 'ABCDEFG', nwise('ABCDEFG', 3) -> 'ABC', 'BCD', 'CDE'...
     """
-    vectors = sent2vec(sentences)
-    graph = {}
-    for (n1, s1), (n2, s2), in it.combinations(enumerate(vectors), 2):
-        if abs(n1 - n2) < skip_adjacent:
-            continue
-        graph[frozenset((n1, n2))] = 1 - cosine(s1, s2)
-    return graph
+    return zip(*[tokenized_sentences[i::n] for i in range(n)])
 
-def tf_idf(sentences):
-    ti = TfidfVectorizer()
-    X = ti.fit_transform(sentences)
-    return X
-
+def ngram_tfidf(tokenized_sentences, sentence_ngram=1, word_ngram=1):
+    df = {}
+    tf = {}
+    for sentences in nwise(tokenized_sentences, sentence_ngram):
+        document = sum(sentences)
+        words = [" ".join(w) for w in nwise(document, word_ngram)]
+        wordcount = {}
+        for w in words:
+            wordcount[w] = wordcount.get(w, 0) + 1
+        for word, occurences in wordcount.items():
+            tf[word] = tf.get(word, 0) + occurences
+            df[word] = tf.get(word, 0) + 1
+    n_documents = sentences + 1 - sentence_ngram
+    idf = {k: n_documents / v for k, v in df.items() if v > 1}
+    average_tf = {k: v / df[k] for k, v in tf.items() if v / df[k] > 1}
+    keys = set().intersection(idf.keys(), average_tf.keys())
+    return {key: idf[key] * average_tf[key] for key in keys}
+ 
 def helpful_links(sentences, method: ("sent2vec", "tfidf")="sent2vec"):
     graph = cosine_graph(sentences, skip_adjacent=10)
     ordered = sorted(graph.items(), key=lambda x: x[1])[::-1]
@@ -56,4 +58,4 @@ def helpful_links(sentences, method: ("sent2vec", "tfidf")="sent2vec"):
 # see https://github.com/plangrid/pdf-annotate
 if __name__ == "__main__":
     # k = helpful_links(katz)
-    tf_idf(katz)
+    ngram_tfidf(katz)
