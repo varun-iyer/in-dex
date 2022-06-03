@@ -51,16 +51,21 @@ def ngram_tfidf(tokenized_sentences, sentence_ngram=1, word_ngram=1):
     return {key: idf[key] * average_tf[key] for key in keys}
  
 def fuzzy_search(term, text):
-    return list(re.finditer(r"\s.{,15}".join(term), text.lower()))
+    return list(re.finditer(r".{,3}\s(\w+.{,3}\s){,5}".join(term), text.lower()))
 
-def in_dex(document):
+def key_phrases(document):
     tok = tokdoc(document)
     sorted_phrases = sum([list(ngram_tfidf(tok, 4, n).keys()) for n in range(4, 1, -1)], [])
     n_sentence = len(tok)
     sorted_phrases = sorted_phrases[:n_sentence//5]
+    return sorted_phrases
+
+def in_dex(document):
+    sorted_phrases = key_phrases(document)
     link_sets = [fuzzy_search(sp.split(" "), document) for sp in sorted_phrases]
     return link_sets
 
 # see https://github.com/plangrid/pdf-annotate
 if __name__ == "__main__":
     k = in_dex(katz)
+     
