@@ -1,6 +1,7 @@
 import itertools as it
 from scipy.spatial.distance import cosine
 from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.stem import PorterStemmer
 from stop_words import get_stop_words
 import re
 from bs4 import BeautifulSoup
@@ -21,16 +22,16 @@ test_sentences = [
 def tokdoc(raw_text):
     raw_text = raw_text.replace("\n", " ").lower()
     tok = sent_tokenize(raw_text)
+    ps = PorterStemmer()
     tok = [
         [
             w
             for w in word_tokenize(sentence)
-            if (w not in stop_words and re.match(word, w))
+            if (w not in stop_words and re.match(word, w) and len(w) > 3)
         ]
         for sentence in tok
     ]
     return tok
-
 
 katz = open("katz.txt").read().replace("U. S.", "U.S.")
 
@@ -64,13 +65,13 @@ def ngram_tfidf(tokenized_sentences, sentence_ngram=1, word_ngram=1):
 
 
 def fuzzy_search(term, text):
-    return list(re.finditer(r".{,3}\s(\w+.{,3}\s){,5}".join(term), text.lower()))
+    return list(re.finditer(r".{,3}\s(\w+.{,3}\s){,5}".join(term), text, re.IGNORECASE))
 
 
 def key_phrases(document):
     tok = tokdoc(document)
     sorted_phrases = sum(
-        [list(ngram_tfidf(tok, 4, n).keys()) for n in range(3, 2, -1)], []
+        [list(ngram_tfidf(tok, 4, n).keys()) for n in range(2, 1, -1)], []
     )
     n_sentence = len(tok)
     sorted_phrases = sorted_phrases[: n_sentence // 5]
@@ -111,7 +112,7 @@ def in_dex_html(html_file):
 
     for nset, nmatch, match in annotations:
             start = match.span()[0]
-            while rematch := re.search(str(match.group()), out_html[start:], re.IGNORECASE):
+            while rematch := re.search(re.escape(str(match.group())), out_html[start:], re.IGNORECASE):
                 if out_html[start + rematch.span()[0] - 1] != ">" and \
                         out_html[start + rematch.span()[1]] != ">":
                     break
@@ -128,7 +129,7 @@ def in_dex_html(html_file):
                 link_down = f'<a href="#{nset}_{min(nmatch+1, len(indices[nset])-1)}" class="noline"><sup>&darr;</sup></a>'
             out_html = html_wrap(
                 out_html,
-                [start + r for r in rematch.span()],
+                (start + rematch.span()[0], start + rematch.span()[1]),
                 (f'<a id="{nset}_{nmatch}">', f'</a>' + link_up + link_down)
             )
     outfile = open(f"{html_file}.idx", "w")
