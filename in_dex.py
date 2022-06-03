@@ -70,7 +70,7 @@ def fuzzy_search(term, text):
 def key_phrases(document):
     tok = tokdoc(document)
     sorted_phrases = sum(
-        [list(ngram_tfidf(tok, 4, n).keys()) for n in range(4, 1, -1)], []
+        [list(ngram_tfidf(tok, 4, n).keys()) for n in range(3, 2, -1)], []
     )
     n_sentence = len(tok)
     sorted_phrases = sorted_phrases[: n_sentence // 5]
@@ -138,4 +138,5 @@ def in_dex_html(html_file):
     return out_html
 
 if __name__ == "__main__":
-    in_dex_html("katz.html")
+    import sys
+    in_dex_html(sys.argv[1])
